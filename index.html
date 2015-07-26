@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <title></title>
+        <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            $(document).ready(function () {
+                var socket = io.connect();
+
+                $(window).unload(function () {
+                	if (socket) socket.disconnect();
+                });
+
+                createNotice('명령어: /연결, /연결종료');
+
+                socket.on('join', function (data) {
+                    switch (data.type) {
+                        case 0:
+                            createNotice('상대방을 기다리는 중입니다.');
+                            break;
+                        case 1:
+                            createNotice('상대방과 연결이 되었습니다.');
+                            break;
+                    }
+                });
+
+                socket.on('left', function () {
+                    createNotice('상대방과 연결이 종료되었습니다.');
+                    socket.emit('left');
+                });
+
+                socket.on('message', function (data) {
+                    createMessage(data.no, data.message, data.date);
+                });
+
+                $('#chat').keydown(function (e) {
+                    if (e.keyCode == 13 && $('#chat').val() != "") {
+                        command($('#chat').val());
+                        $('#chat').val('');
+                    }
+                });
+
+                function command(m) {
+                    if (m == "/연결") {
+                        $('.chatBox').empty();
+                        socket.emit('join');
+                    } else if (m == "/연결종료"){
+                        createNotice('상대방과 연결이 종료되었습니다.');
+                        socket.emit('left');
+                    } else {
+                        socket.emit('message', m);
+                    }
+                }
+
+                function createNotice(m) {
+                    var output = '<div class="both"></div>';
+                    output += '<div align="center">' + m + '</div>';
+                    output += '<div class="both"></div>';
+
+                    $('.container').finish();
+            		$('.chatBox').append(output);
+            		$('.container').animate({scrollTop:$('.chatBox').height()});
+                }
+
+                function createMessage(d, m, dd) {
+                    var c;
+
+                    switch (d) {
+                        case 0:
+                            c = 'left';
+                            break;
+                        case 1:
+                            c = 'right';
+                            break;
+                    }
+
+                    var output = '<li class='+ c +'>';
+                    output += '<div class="name">' + (d == 0 ? '낯선 사람' : '당신') +'</div>';
+                    output += '<div class="message">' + m + '</div>';
+                    output += '<span class="date">' + dd + '</span>';
+                    output += '</li>';
+                    output += '<div class="both"></div>';
+
+                    $('.container').finish();
+            		$('.chatBox').append(output);
+            		$('.container').animate({scrollTop:$('.chatBox').height()});
+                }
+            });
+
+        </script>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+            }
+
+            body {
+                background: rgb(255, 236, 66);
+            }
+
+            ul { list-style: none; }
+
+            .container {
+                height: calc(100% - 52px);
+                overflow-y: scroll;
+            }
+
+            .chatBox {
+                width: 100%;
+                margin-top: 20px;
+                height: auto;
+            }
+
+            .chatBox .left {
+                float: left;
+                padding: 15px;
+                background: #ecf0f1;
+                margin-left: 24px;
+                border-radius: 8px;
+            }
+
+            .chatBox .left::after {
+                float: left;
+                content: ' ';
+                border: 12px solid;
+                margin-top: -10px;
+                margin-left: -27px;
+                border-color: transparent transparent #ecf0f1 transparent;
+            }
+
+            .chatBox .date {
+                font-size: 12px;
+            }
+
+            .chatBox .both {
+                clear: both;
+                margin-bottom: 10px;
+            }
+
+            .chatBox .right {
+                float: right;
+                padding: 15px;
+                margin-right: 24px;
+                background: #c1e4ec;
+                border-radius: 8px;
+            }
+
+            .chatBox .right::after {
+                float: right;
+                content: ' ';
+                border: 12px solid;
+                margin-top: -10px;
+                margin-right: -27px;
+                border-color: transparent transparent #C1E4EC transparent;
+            }
+
+            .name, .message {
+                font-size: 14px;
+            }
+
+            .chatBox .left .date {
+                float:right;
+            }
+
+            .chatBox .right .name {
+                text-align: right;
+            }
+
+            .chatBox .right .message {
+                text-align: right;
+            }
+
+            .foot {
+                position: fixed;
+                width: 100%;
+                top: 100%;
+                margin-top: -52px;
+                height: auto;
+            }
+
+            .chatInput {
+                padding: 10px;
+                height: auto;
+            }
+
+            .chatInput input[type=text] {
+                width: 100%;
+                padding-top: 10px;
+                padding-bottom: 10px;
+                border: 1px solid rgb(214, 166, 16);
+                border-radius: 5px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <ul class="chatBox">
+            </ul>
+        </div>
+        <div class="foot">
+            <div class="chatInput">
+                <input type="text" id="chat" placeholder="대화를 하시려면 엔터 키를 누르세요.">
+            </div>
+        </div>
+    </body>
+</html>
