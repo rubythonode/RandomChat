@@ -124,11 +124,11 @@ io.sockets.on('connection', function (socket) {
 
     UserManager.addUser(new User(socket));
 
+    var user = UserManager.getUser(socket);
+
     console.log('현재 접속자 수: ' + UserManager.getCount());
 
     socket.on('join', function () {
-        var user = UserManager.getUser(socket);
-
         if (!RoomManager.names.length) {
             RoomManager.create(user);
         } else {
@@ -144,24 +144,20 @@ io.sockets.on('connection', function (socket) {
     });
 
     socket.on('left', function () {
-        var user = UserManager.getUser(socket);
         user.socket.broadcast.to(user.room).emit('left');
         user.leave(user.room);
     });
 
     socket.on('date', function () {
-        var user = UserManagge.getUser(socket);
         user.send('date', getServerDate());
     })
 
     socket.on('message', function (data) {
-        var user = UserManager.getUser(socket);
         user.socket.broadcast.to(user.room).emit('message', {'no': 0, 'message': data, 'date': getServerDate()});
         user.send('message', {'no': 1, 'message': data, 'date': getServerDate()});
     });
 
     socket.on('disconnect', function () {
-        var user = UserManager.getUser(socket);
         user.socket.broadcast.to(user.room).emit('left');
         user.leave(user.room);
         UserManager.remove(user);
