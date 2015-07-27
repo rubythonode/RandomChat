@@ -32,6 +32,10 @@
                     socket.emit('left');
                 });
 
+                socket.on('notice', function (data) {
+                    createNotice(data.message);
+                })
+
                 socket.on('message', function (data) {
                     createMessage(data.no, data.message, data.date);
                 });
