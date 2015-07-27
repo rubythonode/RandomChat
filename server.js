@@ -15,9 +15,65 @@ server.listen(80, function () {
 
 var io = socket_io.listen(server);
 
-var sockets = new Array();
+var User = function (socket) {
+    this.socket = socket;
+    this.room = "";
 
-var roomCount = 0;
+    this.send = function (type, data) {
+        this.socket.emit(type, data);
+    }
+
+    return this;
+}
+
+var UserManager = new function () {
+    this.users = new Array();
+
+
+    this.addUser = function (user) {
+        this.users.push(user);
+    }
+
+    this.remove = function (user) {
+        for (var i in this.users) {
+            var user = this.users[i];
+            if (this.user == user) {
+                this.users.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    this.getUser = function (socket) {
+        for (var i in this.users) {
+            var user = this.users[i];
+            if (user.socket == socket)
+                return user
+        }
+    }
+
+    this.send = function (type, data) {
+        for (var i in this.users) {
+            var user = this.users[i];
+            user.send(type, data);
+        }
+    }
+
+    return this;
+}
+
+var Room = function (room) {
+    this.room = room;
+    this.count = 0;
+
+    return this;
+}
+
+var RoomManager = new function () {
+    this.rooms = new Array();
+
+    return this;
+}
 
 var getClients = function (roomName) {
     var clients = io.sockets.adapter.rooms[roomName];
@@ -43,47 +99,59 @@ var getServerDate = function () {
 io.sockets.on('connection', function (socket) {
     socket.leave(socket.id);
 
+    UserManager.addUser(new User(socket));
+
     socket.on('join', function () {
         var rooms = io.sockets.adapter.rooms;
 
+        console.log(rooms);
+
         if (!rooms) {
-            console.log("방이 없어서 만듭니다.");
-            sockets[socket.id] = socket.id;
-            socket.join(socket.id);
-            socket.emit('join', {'type': 0});
+            var user = UserManager.getUser(socket);
+            user.room = user.socket.id;
+            user.socket.join(user.room);
+            user.send('join', {'type': 0});
         } else {
             for (var room in rooms) {
                 if (getClients(room) == 1) {
-                    console.log("방에 접속했습니다.");
-                    sockets[socket.id] = room;
-                    socket.join(room);
-                    io.sockets.in(sockets[socket.id]).emit('join', {'type': 1});
+                    var user = UserManager.getUser(socket);
+                    user.room = room;
+                    user.socket.join(user.room);
+                    for (var u in UserManager.users) {
+                        if (UserManager.users[u].room == room)
+                            UserManager.users[u].send('join', {'type': 1});
+                    }
                     return;
                 }
             }
-            console.log("방이 없어서 만듭니다.");
-            sockets[socket.id] = socket.id;
-            socket.join(socket.id);
-            socket.emit('join', {'type': 0});
+            var user = UserManager.getUser(socket);
+            user.room = user.socket.id;
+            user.socket.join(user.room);
+            user.send('join', {'type': 0});
         }
     });
 
     socket.on('left', function () {
-        socket.broadcast.to(sockets[socket.id]).emit('left');
-        socket.leave(sockets[socket.id]);
+        var user = UserManager.getUser(socket);
+        user.socket.broadcast.to(user.room).emit('left');
+        user.socket.leave(user.room);
     });
 
     socket.on('date', function () {
-        socket.emit('date', getServerDate());
+        var user = UserManagge.getUser(socket);
+        user.send('date', getServerDate());
     })
 
     socket.on('message', function (data) {
-        socket.broadcast.to(sockets[socket.id]).emit('message', {'no': 0, 'message': data, 'date': getServerDate()});
-        socket.emit('message', {'no': 1, 'message': data, 'date': getServerDate()});
+        var user = UserManager.getUser(socket);
+        user.socket.broadcast.to(user.room).emit('message', {'no': 0, 'message': data, 'date': getServerDate()});
+        user.send('message', {'no': 1, 'message': data, 'date': getServerDate()});
     });
 
     socket.on('disconnect', function () {
-        socket.broadcast.to(sockets[socket.id]).emit('left');
-        socket.leave(sockets[socket.id]);
+        var user = UserManager.getUser(socket);
+        user.socket.broadcast.to(user.room).emit('left');
+        user.socket.leave(user.room);
+        UserManager.remove(user);
     })
 });
