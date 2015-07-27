@@ -37,7 +37,6 @@ var User = function (socket) {
 var UserManager = new function () {
     this.users = new Array();
 
-
     this.addUser = function (user) {
         this.users.push(user);
     }
@@ -75,8 +74,10 @@ var UserManager = new function () {
 
 var RoomManager = new function () {
     this.rooms = io.sockets.adapter.rooms;
+    this.names = new Array();
 
     this.create = function (user) {
+        this.names.push(user.socket.id);
         user.room = user.socket.id;
         user.join(user.room);
         user.send('join', {'type': 0});
@@ -101,6 +102,7 @@ var RoomManager = new function () {
         io.sockets.in(room).emit(type, data);
     }
 }
+
 var getServerDate = function () {
     var d = new Date();
     var m = d.getHours() > 12 ? '오후' : '오전';
@@ -125,25 +127,19 @@ io.sockets.on('connection', function (socket) {
     console.log('현재 접속자 수: ' + UserManager.getCount());
 
     socket.on('join', function () {
-        if (!RoomManager.rooms) {
-            var user = UserManager.getUser(socket);
+        var user = UserManager.getUser(socket);
+
+        if (!RoomManager.names.length) {
             RoomManager.create(user);
         } else {
-            for (var room in RoomManager.rooms) {
-                if (RoomManager.getCount(room) == 1) {
-                    var user = UserManager.getUser(socket);
-                    user.room = room;
-                    user.join(user.room);
-                    for (var i in UserManager.users) {
-                        if (UserManager.users[i].room == room)
-                            UserManager.users[i].send('join', {'type': 1});
-                    }
-                    RoomManager.send(room, 'notice', {'message': '바르고 고운말을 사용합시다.'});
-                    return;
-                }
+            user.room = RoomManager.names[0];
+            user.join(user.room);
+            for (var i in UserManager.users) {
+                if (UserManager.users[i].room == user.room)
+                    UserManager.users[i].send('join', {'type': 1});
             }
-            var user = UserManager.getUser(socket);
-            RoomManager.create(user);
+            RoomManager.send(user.room, 'notice', {'message': '바르고 고운말을 사용합시다.'});
+            RoomManager.names.splice(0, 1);
         }
     });
 
