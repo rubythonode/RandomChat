@@ -70,19 +70,8 @@
                 }
 
                 function createMessage(d, m, dd) {
-                    var c;
-
-                    switch (d) {
-                        case 0:
-                            c = 'left';
-                            break;
-                        case 1:
-                            c = 'right';
-                            break;
-                    }
-
-                    var output = '<li class='+ c +'>';
-                    output += '<div class="name">' + (d == 0 ? '낯선 사람' : '당신') +'</div>';
+                    var output = '<li class='+ (d ? 'right' : 'left') +'>';
+                    output += '<div class="name">' + (d ? '당신' : '낯선 상대') +'</div>';
                     output += '<div class="message">' + m + '</div>';
                     output += '<span class="date">' + dd + '</span>';
                     output += '</li>';
